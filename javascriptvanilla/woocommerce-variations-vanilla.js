@@ -461,24 +461,21 @@ class WooCommerceVariations {
     }
 
     handleAddToCartResponse(response) {
-        if (response.error) {
-            alert(response.error);
-            return;
-        }
-        
-        // Show cart sidebar
-        this.showCartSidebar();
-        
-        // Update cart fragments if available
-        if (response.fragments) {
-            this.updateCartFragments(response.fragments);
-        } else {
-            this.updateCartFragments();
-        }
-        
-        // Trigger added to cart event
-        this.triggerEvent('added_to_cart', { response: response });
+    if (response.error) {
+        alert(response.error);
+        return;
     }
+
+    // ✅ Only load content — showing happens after it loads
+    this.loadCartContent();
+
+    if (response.fragments) {
+        this.updateCartFragments(response.fragments);
+    }
+
+    this.triggerEvent('added_to_cart', { response: response });
+}
+
 
     setupCartSidebar() {
         this.cartSidebar = document.getElementById('cart-sidebar');
@@ -541,28 +538,32 @@ class WooCommerceVariations {
     }
 
     loadCartContent() {
-        const cartContent = this.cartSidebar.querySelector('.widget_shopping_cart_content');
-        
-        if (cartContent && !cartContent.innerHTML.trim()) {
-            // Load cart content via AJAX
-            const xhr = new XMLHttpRequest();
-            xhr.open('GET', window.location.origin + '/?wc-ajax=get_refreshed_fragments');
-            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-            
-            xhr.onload = () => {
-                if (xhr.status === 200) {
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        this.updateCartFragments(response.fragments);
-                    } catch (e) {
-                        console.error('Error loading cart content:', e);
-                    }
-                }
-            };
-            
-            xhr.send();
+    const cartContent = this.cartSidebar.querySelector('.widget_shopping_cart_content');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', window.location.origin + '/?wc-ajax=get_refreshed_fragments');
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+    xhr.onload = () => {
+        if (xhr.status === 200) {
+            try {
+                const response = JSON.parse(xhr.responseText);
+                this.updateCartFragments(response.fragments);
+                // ✅ Show cart only after content loads
+                this.displayCartSidebar();
+            } catch (e) {
+                console.error('Error parsing cart content:', e);
+            }
         }
-    }
+    };
+
+    xhr.onerror = () => {
+        console.error('Failed to load cart content.');
+    };
+
+    xhr.send();
+}
+
 
     updateCartFragments(fragments = null) {
         if (!fragments) {
